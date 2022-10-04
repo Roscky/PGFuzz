@@ -1,4 +1,4 @@
-# PGFuzz for ArduPilot-test
+# PGFuzz for ArduPilot
 
 ## Parsing valid ranges of configuration parameters
 Please refer to <a href="https://github.com/purseclab/PGFUZZ/tree/main/ArduPilot/xml_parse" target="_blank"> this</a>.
