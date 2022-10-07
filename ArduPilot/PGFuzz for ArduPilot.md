@@ -20,5 +20,5 @@ PGFuzz将**34**个状态分为**15**类，动态分析与这15类状态有关的
 
 <u>（运行动态分析时，会将所有输出文件创建（如不存在）或清空。自己实验发现，PGFuzz在GitHub上的输出的15类状态相关参数，与自己复现过程中生成的参数有差异），例如position.txt文件。PGFuzz原本相关参数是RC1和RC2，但是自己跑的时候变为SIM_ACC2_BIAS_Y</u>
 
-![image-20221007152925832](C:\Users\Roscky\PycharmProjects\PGFuzz\ArduPilot\md_image\image-20221007152925832.png)
+![image-20221007152925832](.\md_image\image-20221007152925832.png)
 
