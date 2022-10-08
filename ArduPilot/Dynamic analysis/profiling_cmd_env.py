@@ -17,7 +17,9 @@ import random
 import threading
 
 # Tell python where to find mavlink so we can import it
+# ?打印目录后返现该目录并不存在，/home/pgfuzz/pgfuzz/ArduPilot/Dynamic analysis/../mavlink
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../mavlink'))
+
 from pymavlink import mavutil, mavwp
 from pymavlink import mavextra
 from pymavlink import mavexpression
