@@ -28,7 +28,7 @@ ArduPilot （v.4.0.3）支持1,140个配置参数(InputP)、58个用户命令(In
 
 github项目中将状态分为了15类，但是论文里面只分了六类
 
-![image-20221010112815028](C:\Users\Roscky\Desktop\md_image\image-20221010112815028.png)
+![image-20221010112815028](md_image/image-20221010112815028.png)
 
 安全策略相关的term有：1、状态；2、配置参数InputP；3、环境参数InputE
 
