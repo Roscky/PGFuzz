@@ -147,6 +147,12 @@ while not ack:
 
 [Messages (common) · MAVLink Developer Guide](https://mavlink.io/en/messages/common.html#COMMAND_LONG)
 
+### 设置参数param_set_send()
+
+[Messages (common) · MAVLink Developer Guide](https://mavlink.io/en/messages/common.html#PARAM_SET)
+
+![image-20221102212726188](md_image/image-20221102212726188.png)
+
 
 
 ## 补充知识

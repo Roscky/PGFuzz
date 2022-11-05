@@ -1058,6 +1058,7 @@ master.mav.set_mode_send(
     mode_id)
 
 # Check ACK
+# 这一步为啥要用while -> 如果不满足接收ack对应的命令为SET_MODE则继续循环等待，但是应该有更直观的写法
 ack = False
 while not ack:
     # Wait for ACK command
