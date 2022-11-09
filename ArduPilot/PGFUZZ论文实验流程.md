@@ -88,7 +88,28 @@ PGFUZZ使用飞行控制软件的控制算法中的参考状态值作为当前�
 
 <u>上图为MAVLINK协议的NAV_CONTROLLER_OUTPUT信息，包含的消息有参考状态的roll pitch yaw角度以及alt aspd的err值等信息，论文只计算了roll pitch yaw alt的消除环境噪声（een）值，代码接收4个时间段的信息并计算参考状态值，然后取4个时间段的参考状态值得平均作为状态参考值，这样计算出来的参考状态值更加稳定。==但是4个时间段计算过后就清零了，相当于4个时间段融合为1个时间段，是不是更改为滑动窗口更为合适，这样每个时间段都能够得到稳定的参考值==</u>
 
-<img src="md_image/image-20221106170511053.png" alt="image-20221106170511053" style="zoom:40%;" />
+```
+# For een (eliminate environmental noise)
+een_alt += current_altitude + alt_error
+een_roll += msg.nav_roll
+een_pitch += msg.nav_pitch
+een_yaw += msg.nav_bearing
+een_cnt += 1
+
+if een_cnt >= 4:
+    een_alt_avg = een_alt / een_cnt
+    een_roll_avg = een_roll / een_cnt
+    een_pitch_avg = een_pitch / een_cnt
+    een_yaw_avg = een_yaw / een_cnt
+    een_cnt = 0
+    print("[een] alt: %f, roll: %d, pitch: %f, yaw: %f" % (een_alt_avg, een_roll_avg, een_pitch_avg, een_yaw_avg))
+
+    # Initialize een variables
+    een_alt = 0
+    een_roll = 0
+    een_pitch = 0
+    een_yaw = 0
+```
 
 
 
@@ -265,9 +286,18 @@ PGFUZZ发现，给COM_POS_FS_DELAY参数指定一个负值，该参数表示打�
 
 ### PGFUZZ每次输入之后间隔多长时间才进行下次输入
 
+每次执行输入后**休眠4秒**进行下一次循环
 
+```
+# Calculate propositional and global distances
+calculate_distance(guidance="false")
 
+pick_up_cmd()
 
+# Calculate distances to evaluate effect of the executed input
+time.sleep(4)
+calculate_distance(guidance="true")
+```
 
 
 

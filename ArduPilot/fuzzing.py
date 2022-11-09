@@ -329,19 +329,19 @@ def change_parameter(selected_param):
         no_range = 1
         param_value = random.randint(PARAM_MIN, PARAM_MAX)
         print("[param] selected params: %s, there is no min of valid range, random param value:%d" % (
-        read_inputs.param_name[selected_param], param_value))
+            read_inputs.param_name[selected_param], param_value))
 
     elif verify_real_number(range_min) == True:
         no_range = 0
         if range_min.isdigit() == True and range_max.isdigit() == True:
             param_value = random.randint(int(range_min), int(range_max))
             print("# [Change_parameter()] selected params: %s, min: %f, max: %f, random digit param value:%d" % (
-            read_inputs.param_name[selected_param], float(range_min), float(range_max), param_value))
+                read_inputs.param_name[selected_param], float(range_min), float(range_max), param_value))
 
         elif range_min.isdigit() == False or range_max.isdigit() == False:
             param_value = random.uniform(float(range_min), float(range_max))
             print("# [Change_parameter()] selected params: %s, min: %f, max: %f, random real param value:%f" % (
-            read_inputs.param_name[selected_param], float(range_min), float(range_max), param_value))
+                read_inputs.param_name[selected_param], float(range_min), float(range_max), param_value))
 
     # Step 2. Change the parameter value
 
@@ -701,7 +701,7 @@ def print_distance(G_dist, P_dist, length, policy, guid):
                                 log_flag = 1
                                 print("[Redundant input] {} {} {} {}".format(row[0], row[1], row[2], row[3]))
                                 print("[Redundant input] old:%f - new:%f" % (
-                                float(row[3]), (P_dist[i] - Previous_distance[i])))
+                                    float(row[3]), (P_dist[i] - Previous_distance[i])))
                                 if float(row[3]) <= (P_dist[i] - Previous_distance[i]):
                                     log_flag = 2
                                     print_input = ""
@@ -716,11 +716,11 @@ def print_distance(G_dist, P_dist, length, policy, guid):
                                     guide_line = guide_line.replace(line, print_input)
                                     print(
                                         "[Redundant input] we need to log %s because it increase more propositional distance %d" % (
-                                        Current_input, i + 1))
+                                            Current_input, i + 1))
                 # Append a new input
                 if log_flag == 0:
                     print("[*Distance*] propositional distance %d is increased (input: %s, %s)" % (
-                    i + 1, Current_input, Current_input_val))
+                        i + 1, Current_input, Current_input_val))
 
                     print_input = ""
                     print_input += Current_input
@@ -1378,7 +1378,6 @@ while not ack:
 # This is for testing A.RTL1
 time.sleep(25)
 # time.sleep(3)
-
 
 # Maintain mid-position of stick on RC controller
 goal_throttle = 1500
