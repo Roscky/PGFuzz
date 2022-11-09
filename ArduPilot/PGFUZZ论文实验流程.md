@@ -237,11 +237,27 @@ RVFuzzer使用的参数只有配置参数和风这一个环境参数
 
 ### C. Case Studies
 
+详细介绍了PGFUZZ确定的四个政策违规。我们首先描述了导致每个违规行为的潜在原因，然后展示了攻击者如何利用它们迫使车辆处于不希望的状态。
 
+#### Case Study 1 - Unexpected Behaviors due to Misimplementation
 
+RV必须检查一组先决条件才能安全进入新状态。然而，PGFUZZ发现飞行控制软件不检查先决条件或错误地验证这些先决条件。
 
+在FLIP模式释放降落伞会导致无人机坠毁
 
+#### Case Study 2 - Failing to Maintain Proper Altitude after the Flip Maneuver
 
+每个配置参数都有其有效范围。然而，PGFUZZ发现一组参数有错误的有效范围，这导致车辆在地面上坠毁。
+
+ArduPilot文档说明，如果油门处于中间位置(即保持当前高度)，且飞行器处于ALT_HOLD模式，则必须保持当前高度。如果辊轴速率控制器参数发生改变，这一要求就不能正确实现。根本原因是接受的参数值范围太广。当用户先触发FLIP模式再调回ALT_HOLD模式时，由于滚动角速度有限，无人机无法恢复稳定的滚转角度，导致无法保持在同一高度，最终坠落地面。
+
+#### Case Study 3 - Incorrect Altitude Computation after Acrobatic Flying
+
+无人机从多个传感器测量相同的物理状态，以解决传感器故障和执行传感器融合。例如，GPS和气压计传感器同时测量高度。但是，PGFUZZ发现，当GPS传感器出现较大偏差时，ArduPilot会错误地计算高度。在ALT_HOLD模式下，由于高度不正确，导致无人机无法保持高度。ArduPilot错误地应用了GND_ALT_OFFSET参数来计算气压高度，导致了不希望的高度变化。
+
+#### Case Study 4 - Failing to Trigger the GPS Fail-safe
+
+PGFUZZ发现，给COM_POS_FS_DELAY参数指定一个负值，该参数表示打开GPS故障保护装置和设置到特定飞行模式的时间延迟，导致PX4无法触发GPS故障保护装置。
 
 
 
