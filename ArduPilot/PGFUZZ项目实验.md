@@ -148,7 +148,7 @@ PGFUZZ主函数运行时，文件调用关系流程如图所示
     set_preconditions(Precondition_path)
     ```
 
-11. 创建守护线程t3，调用check_liveness函数检测模拟器是否死机，如果死机则通知重启（<u>这儿代码写的很怪，明明可以放在一个代码文件里面重启，但是分成了好几个文件用作进程通信，但是感觉没有必要</u>）
+11. 创建守护线程t3，调用check_liveness函数检测模拟器是否死机，如果死机则通知重启（<u>这儿代码写的很怪，明明可以放在一个代码文件里面重启，但是分成了好几个文件用作进程通信，感觉没有必要</u>）
 
 12. 循环判断无人机状态并根据状态做出不同处理
 
@@ -175,7 +175,14 @@ if drone_status == 6:
 ```
 # if RV is still active state
 if drone_status == 4:
-	
+	# Calculate propositional and global distances
+    calculate_distance(guidance="false")
+
+    pick_up_cmd()
+
+    # Calculate distances to evaluate effect of the executed input
+    time.sleep(4)
+    calculate_distance(guidance="true")
 ```
 
 

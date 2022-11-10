@@ -1,4 +1,4 @@
-## PGFUZZ论文实验流程
+## V. PGFUZZ论文实验流程
 
 ==高亮：有待解决的问题==
 
@@ -158,7 +158,7 @@ Bug Post-Processing目的是查找导致策略违反的最小输入序列，通�
 
 
 
-## PGFUZZ实验评估
+## VII. PGFUZZ实验评估
 
 ### A. Component Evaluation
 
@@ -279,6 +279,18 @@ ArduPilot文档说明，如果油门处于中间位置(即保持当前高度)，
 #### Case Study 4 - Failing to Trigger the GPS Fail-safe
 
 PGFUZZ发现，给COM_POS_FS_DELAY参数指定一个负值，该参数表示打开GPS故障保护装置和设置到特定飞行模式的时间延迟，导致PX4无法触发GPS故障保护装置。
+
+
+
+
+
+## 扩展
+
+### Automated Predicate Generation
+
+为了减少用户的手工工作，PGFUZZ自动化了第五步(即，创建代码片段来计算命题和全局距离)。这个步骤被称为谓词生成器（通过PyParsing库实现）。其次，为了算术计算源代码中的距离，它将验证过的always形式的MTL公式转换为not eventually形式的MTL公式，如第V -B3节所述（将->转换为与非组合）。第三，我们基于转换后的MTL公式创建二叉表达式树(如图所示)。然后，我们遍历树的节点，自动生成计算距离和检查策略违反的代码片段。我们创建了命题距离和全局距离的代码片段，如第V -B3节所述。
+
+<img src="md_image/image-20221110163524317.png" alt="image-20221110163524317" style="zoom: 67%;" />
 
 
 
