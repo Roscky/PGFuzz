@@ -150,7 +150,7 @@ PGFUZZ主函数运行时，文件调用关系流程如图所示
 
 11. 创建守护线程t3，调用check_liveness函数检测模拟器是否死机，如果死机则通知重启（<u>这儿代码写的很怪，明明可以放在一个代码文件里面重启，但是分成了好几个文件用作进程通信，感觉没有必要</u>）
 
-12. 循环判断无人机状态并根据状态做出不同处理
+12. 循环判断无人机状态并根据状态做出不同处理，其中主要fuzzing部分在第三部分（drone_status == 4），主函数这里一共调用了两次calculate_distance()函数，在输入参数之前调用一次记录各个命题距离，输入参数之后调用一次记录输入参数对命题距离的影响，如果增大了命题距离则记录参数值
 
 ```
 # System is grounded and on standby. It can be launched any time. The vehicle is grounded
@@ -186,6 +186,162 @@ if drone_status == 4:
 ```
 
 
+
+### calculate_distance(guidance)函数
+
+**主函数一共调用两次calculate_distance()函数，在输入参数之前调用一次记录各个命题距离，输入参数之后调用一次记录输入参数对命题距离的影响，如果增大了命题距离则记录参数值**
+
+1. 计算平均姿态、平均地理位置、平均GPS高度（计算完成后将所有counter置为0，便于计算下个周期的平均数据）
+
+   ```
+   alt_avg = alt_series / stable_counter
+   roll_avg = roll_series / stable_counter
+   pitch_avg = pitch_series / stable_counter
+   heading_avg = heading_series / stable_counter
+   
+   lat_avg = lat_series / position_cnt
+   lon_avg = lon_series / position_cnt
+   
+   alt_GPS_avg = alt_GPS_series / gps_message_cnt
+   ```
+
+2. 根据无人机当前状态的值计算各个命题距离（以A.CHUTE为例）
+
+   ```
+   # P1
+   if Parachute_on == 1:
+       P[0] = 1
+   else:
+       P[0] = -1
+   # P2
+   if Armed == 0:
+       P[1] = 1
+   else:
+       P[1] = -1
+   # P3
+   if current_flight_mode == "FLIP" or current_flight_mode == "ACRO":
+       P[2] = 1
+   else:
+       P[2] = -1
+   
+   # P4
+   if current_alt > 0:
+       P[3] = (current_alt - previous_alt) / current_alt
+   else:
+       P[3] = 0
+       
+   ...
+   
+   if target_param_value > 0:
+   	P[4] = (target_param_value - current_alt) / target_param_value
+   else:
+   	P[4] = 0
+   ```
+
+3. 根据命题距离计算全局距离（以A.CHUTE为例）
+
+   ```
+   Global_distance = -1 * (min(P[0], max(P[1], P[2], P[3], P[4])))
+   ```
+
+4. 打印距离并作出相应处理
+
+   ```
+   print_distance(G_dist=Global_distance, P_dist=P, length=5, policy="A.CHUTE", guid=guidance)
+   ```
+
+
+
+### print_distance(G_dist, P_dist, length, policy, guid)函数
+
+1. 如果G_dist < 0，则通过store_mutated_inputs()函数记录输入参数序列
+
+   ```
+   if G_dist < 0:
+       store_mutated_inputs()
+   ```
+
+2. 如果guid == false（输入参数之前），则更新Previous_distance
+
+   ```
+   if guid == "false":
+       for i in range(Current_policy_P_length):
+           Previous_distance[i] = P_dist[i]
+   ```
+
+3. 如果guid == true（输入参数之后），则比较每个命题距离，如果当前命题距离比之前Previous_distance的大，说明更接近策略违反状态，将输入的参数通过write_guidance_log()函数，记录在guidance_log.txt中。（<u>这里有很多小细节，比如之前有记录则需要判断当前增大的对应的命题距离是否比之前增大的多，如果增大的更多，就更新纪录</u>，==那么用这种增大的更多的方法判断真的合理吗，还有更重要的一点，如果一个输入增大了一些命题的距离，但是降低了另一部分的距离，我觉得不能简单地判断这个输入能让状态更接近策略违反，需要考虑整体命题距离的变化==）
+
+
+
+### pick_up_cmd()函数
+
+1. 参数类型从用户命令参数、配置参数、环境参数三种随机选择
+
+   ```
+   # a) Randomly select a type of inputs ( 1)user command, 2)parameter, 3)environmental factor)
+   input_type = random.randint(1, 3)
+   ```
+
+2. 随机选择是否需要引导
+
+   ```
+   # True: input mutated from guidance, False: randomly mutate an input
+   Guidance_decision = random.choice([True, False])
+   ```
+
+3. 随机选择类型中的参数进行输入
+
+   ```
+   # b) Randomly select an input from the selected type of inputs
+   
+   # 1) User commands
+   if input_type == 1:
+       execute_cmd(num=random.randint(0, len(read_inputs.cmd_name) - 1))
+   
+   # 2) Parameters
+   elif input_type == 2:
+       change_parameter(selected_param=random.randint(0, len(read_inputs.param_name) - 1))
+   
+   # 3) Environmental factors
+   elif input_type == 3:
+       execute_env(num=random.randint(0, len(read_inputs.env_name) - 1))
+   ```
+
+
+
+
+
+## 疑问
+
+### lat_avg and lon_avg (* 1000) (/1000)
+
+每次做这种操作有什么意义呢，lat_avg和lon_avg都是float类型
+
+```
+lat_avg = lat_avg / 1000
+lat_avg = lat_avg * 1000
+lon_avg = lon_avg / 1000
+lon_avg = lon_avg * 1000
+```
+
+
+
+### 某些参数值通过等待的方式获取
+
+注意程序并不会预先存储所有的参数值，某些时候需要某些参数值并且没有预先存储时，需要指定target_param并等待收到该参数消息（<u>这一步是不是可以通过在全局变量增加相应的值从而减少等待时间并让程序不那么繁琐？==为什么parachute_on就可以预先存储，它与其他没预先存储的参数有什么不同==？如果没有不同的话，解决办法：比如给参数空间创建一个列表，对应下标就存放对应参数</u>）
+
+```
+target_param = "CHUTE_ALT_MIN"
+count = 0
+while target_param_ready == 0 and count < 5:
+    time.sleep(1)
+    count += 1
+
+if target_param_value > 0:
+    P[4] = (target_param_value - current_alt) / target_param_value
+else:
+    P[4] = 0
+```
 
 
 
