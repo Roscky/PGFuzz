@@ -269,7 +269,9 @@ if drone_status == 4:
            Previous_distance[i] = P_dist[i]
    ```
 
-3. 如果guid == true（输入参数之后），则比较每个命题距离，如果当前命题距离比之前Previous_distance的大，说明更接近策略违反状态，将输入的参数通过write_guidance_log()函数，记录在guidance_log.txt中。（<u>这里有很多小细节，比如之前有记录则需要判断当前增大的对应的命题距离是否比之前增大的多，如果增大的更多，就更新纪录</u>，==那么用这种增大的更多的方法判断真的合理吗，还有更重要的一点，如果一个输入增大了一些命题的距离，但是降低了另一部分的距离，我觉得不能简单地判断这个输入能让状态更接近策略违反，需要考虑整体命题距离的变化==）
+3. 如果guid == true（输入参数之后），则比较每个命题距离，如果当前命题距离比之前Previous_distance的大，说明更接近策略违反状态，将输入的参数通过write_guidance_log()函数，记录在guidance_log.txt中，guidance_log.txt记录的是四元组**（参数名称，参数值，增加的命题距离的序号，增加命题距离的大小）**。（<u>这里有很多小细节，比如之前有记录则需要判断当前增大的对应的命题距离是否比之前增大的多，如果增大的更多，就更新纪录</u>，==那么用这种增大的更多的方法判断真的合理吗，还有更重要的一点，如果一个输入增大了一些命题的距离，但是降低了另一部分的距离，我觉得不能简单地判断这个输入能让状态更接近策略违反，需要考虑整体命题距离的变化==）（<u>后续继续看选择从存储的参数中选择参数值的代码，发现，对于每个命题距离，如果当前参数值能够增加就会记录，如果一个参数能够增加多个命题距离，就会被记录多次，然后选择到相同参数的时候是从中随机选择。==这里可以加一个判断，判断某个命题距离是否被满足，如果被满足就可以不用采用当前的参数，而去选择其他命题距离未被满足对应的参数值==</u>）
+
+
 
 
 
@@ -309,6 +311,28 @@ if drone_status == 4:
 
 
 
+#### execute_cmd()函数
+
+1. 创建数组rand存储7个值为0-100的随机值（
+
+   ```
+   # Each user command contains 7 parameters. We assign random values to these parameters.
+   for i in range(7):
+       rand.append(random.randint(1, 100))
+   ```
+
+2. 根据是否引导生成当前要输入的参数值
+
+   ```
+   if Guidance_decision == True:
+       Current_input_val = match_cmd(cmd=Current_input)
+   
+   if Current_input_val != "null":
+       print("@@@[Reuse stored input pair] (%s, %s)@@@" % (Current_input, Current_input_val))
+   ```
+
+3. 根据不同的命令参数输入提供不同的参数值，对RC要进行特判，对更改飞行模式和打开降落伞命令也进行了特判，项目注释说对于很多命令都要进行特判，因为很多命令的参数范围都不一样
+
 
 
 ## 疑问
@@ -342,6 +366,16 @@ if target_param_value > 0:
 else:
     P[4] = 0
 ```
+
+
+
+### MAVLINK的消息
+
+发送命令command_long_send()
+
+设置参数param_set_send()  （<u>设置环境因素和配置参数都是这个函数，为什么环境因素也是通过param设置</u>）
+
+<u>它们的参数在哪里看？</u>
 
 
 
@@ -454,7 +488,7 @@ while not ack:
 
 无人机使用的pwm值在500-2500之间，而常用的值在1000-2000之间。
 
-ArduPilot使用的pwm值在1000-2000之间，pwm值表示输出信号，代表着输出的百分比。比如对throttle channel输出pwm值为1500，则是将电机转速设置为满转速的50%。
+ArduPilot使用的pwm值在**1000-2000**之间，pwm值表示输出信号，代表着输出的百分比。比如对throttle channel输出pwm值为1500，则是将电机转速设置为满转速的50%。
 
 [无人机遥控器的通道（遥控器三大通道详解） | 我爱无人机网 (woiwrj.com)](https://www.woiwrj.com/wurenjibaike/54992/)
 
@@ -528,3 +562,11 @@ RC输入通道的默认映射，set_rc_channel_pwm函数rc_channels_override_sen
 9、自动模式
 
 此模式下飞行器会自动执行地面站Mission Planner设定好的任务，例如起飞、按顺序飞向多个航点、旋转、拍照等。
+
+### Ardupilot Mavlink
+
+#### 用户命令cmd
+
+所有的用户命令都是7个参数
+
+![image-20221113193105474](md_image\image-20221113193105474.png)
