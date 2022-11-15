@@ -10,7 +10,9 @@
   (4) Increment unit（增加粒度）
   (5) Read-only or not（是否只读）
 
-## Dynamic Analysis
+==（但是看政策parameter.txt文件，对应的是Parameter_name, Description, default_value, Min_value, Max_value, Increment_unit)==
+
+## <u>Dynamic Analysis</u>
 
 ### 杂项
 
@@ -332,6 +334,91 @@ if drone_status == 4:
    ```
 
 3. 根据不同的命令参数输入提供不同的参数值，对RC要进行特判，对更改飞行模式和打开降落伞命令也进行了特判，项目注释说对于很多命令都要进行特判，因为很多命令的参数范围都不一样
+
+4. 如果不属于特判参数之一，则使用**master.mav.command_long_send()**函数进行命令输入
+
+   ```
+   master.mav.command_long_send(
+       master.target_system,  # target_system
+       master.target_component,  # target_component
+       int(read_inputs.cmd_number[num]),
+       0,
+       rand[0], rand[1], rand[2], rand[3], rand[4], rand[5], rand[6])
+   ```
+
+5. write_log()函数记录输入命令
+
+
+
+#### change_parameter()函数
+
+1. 根据是否引导生成当前要输入的参数值
+
+   ```
+   if Guidance_decision == True:
+       Current_input_val = match_cmd(cmd=param_name)
+   ```
+
+2. 生成param_value（为没有引导值的情况下使用），如果参数有效范围不合法，则生成PARAM_MIN ~ PARAM_MAX范围内的随机整数
+
+   ```
+   if range_min == 'X':
+       no_range = 1
+       param_value = random.randint(PARAM_MIN, PARAM_MAX)
+       print("[param] selected params: %s, there is no min of valid range, random param value:%d" % (
+           read_inputs.param_name[selected_param], param_value))
+   ```
+
+3. 如果参数范围合法，根据参数范围生成随机数（<u>如果参数范围都为整数则生成整数随机数，否则生成浮点随机数</u>，==如果参数范围为0~1的话就会出现问题，只能随机到两端，不随机到中间，应该改为判断最小增加单元为整数还是浮点数，并且应该是最小单元的倍数==）
+
+   ```
+   if range_min.isdigit() == True and range_max.isdigit() == True:
+       param_value = random.randint(int(range_min), int(range_max))
+   
+   elif range_min.isdigit() == False or range_max.isdigit() == False:
+       param_value = random.uniform(float(range_min), float(range_max))
+   ```
+
+4. 使用**master.mav.param_set_send()**函数进行命令输入
+
+   ```
+   master.mav.param_set_send(master.target_system, master.target_component,
+                             param_name,
+                             param_value,
+                             mavutil.mavlink.MAV_PARAM_TYPE_REAL32)
+   ```
+
+5. write_log()函数记录输入命令
+
+
+
+#### execute_env()函数
+
+1. 根据是否引导生成当前要输入的参数值
+
+   ```
+   if Guidance_decision == True:
+       Current_input_val = match_cmd(cmd=Current_input)
+   ```
+
+2. 如果不引导或者引导映射没有存储该变量，则1~100随机选择参数值
+
+   ```
+   if Current_input_val == "null":
+       rand = random.uniform(0, 100)
+       Current_input_val = str(rand)
+   ```
+
+3. 使用**master.mav.param_set_send()**函数进行命令输入
+
+   ```
+   master.mav.param_set_send(master.target_system, master.target_component,
+                             Current_input,
+                             float(Current_input_val),
+                             mavutil.mavlink.MAV_PARAM_TYPE_REAL32)
+   ```
+
+4. write_log()函数记录输入命令
 
 
 
