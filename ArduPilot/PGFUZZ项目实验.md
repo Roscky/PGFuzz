@@ -10,7 +10,7 @@
   (4) Increment unit（增加粒度）
   (5) Read-only or not（是否只读）
 
-==（但是看政策parameter.txt文件，对应的是Parameter_name, Description, default_value, Min_value, Max_value, Increment_unit)==
+==（但是看策略的parameter.txt文件，对应的是Parameter_name, Description, default_value, Min_value, Max_value, Increment_unit)==
 
 ## <u>Dynamic Analysis</u>
 
@@ -390,6 +390,14 @@ if drone_status == 4:
 
 5. write_log()函数记录输入命令
 
+6. **休眠3秒钟**
+
+   ```
+   write_log(print_param)
+   
+   time.sleep(3)
+   ```
+
 
 
 #### execute_env()函数
@@ -424,7 +432,7 @@ if drone_status == 4:
 
 ## 疑问
 
-### lat_avg and lon_avg (* 1000) (/1000)
+### lat_avg and lon_avg (*1000) (/1000)
 
 每次做这种操作有什么意义呢，lat_avg和lon_avg都是float类型
 
