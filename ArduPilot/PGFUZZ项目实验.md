@@ -430,6 +430,89 @@ if drone_status == 4:
 
 
 
+## 复现
+
+### A.CHUTE策略违反（无人机降落伞非法释放）
+
+#### 策略内容
+
+![image-20221117164530165](md_image/image-20221117164530165.png)
+
+ArduPilot文档明确规定了展开降落伞的条件：(1)马达必须是武装的，(2)飞行器不能处于FLIP或acroo飞行模式，(3)气压计必须显示飞行器没有在爬升，(4)飞行器当前高度必须高于CHUTE_ALT_MIN参数值。PGFUZZ在检查定义这些条件的A.CHUTE1策略(时检测到策略违规。
+
+#### 复现思路
+
+论文中说在当PGFUZZ触发FLIP模式并同时展开降落伞时，它失去俯仰控制，然后在28秒时坠毁在地面上。
+
+尝试输入命令更改PGFUZZ为FLIP模式并同时展开降落伞
+
+修改飞行模式命令
+
+```
+# Choose a mode
+mode = 'FLIP'
+
+# Check if mode is available
+if mode not in master.mode_mapping():
+    print('Unknown mode : {}'.format(mode))
+    print('Try:', list(master.mode_mapping().keys()))
+    exit(1)
+
+# Get mode ID
+mode_id = master.mode_mapping()[mode]
+
+master.mav.set_mode_send(
+    master.target_system,
+    mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
+    rand_fligh_mode)
+```
+
+打开降落伞命令
+
+```
+master.mav.command_long_send(
+            master.target_system,  # target_system
+            master.target_component,  # target_component
+            mavutil.mavlink.MAV_CMD_DO_PARACHUTE,
+            0, 2, 0, 0, 0, 0, 0, 0)
+```
+
+
+
+#### 遇到的问题
+
+在修改模式的时候，程序报错，并且发现命题距离不符合预取，命题P3表示当前模式为FLIP或者ACRO，但是距离为-1，表示当前模式不是FLIP或者ACRO
+
+`Command is valid, but execution has failed. This is used to indicate any non-temporary or unexpected problem, i.e. any problem that must be fixed before the command can succeed/be retried. For example, attempting to write a file when out of memory, attempting to arm when sensors are not calibrated, etc.`
+
+![image-20221117165618755](md_image/image-20221117165618755.png)
+
+怀疑是没有FLIP模式，接着搜索代码，定位到所有模式的信息，发现有FLIP模式
+
+`('Try:', [('STABILIZE', 0), ('SYSTEMID', 25), ('LAND', 9), ('OF_LOITER', 10), ('RTL', 6), ('AUTO_RTL', 27), ('DRIFT', 11), ('FLIP', 14), ('AUTOTUNE', 15), ('BRAKE', 17), ('GUIDED_NOGPS', 20), ('AVOID_ADSB', 19), ('POSITION', 8), ('SPORT', 13), ('FLOWHOLD', 22), ('AUTOROTATE', 26), ('POSHOLD', 16), ('AUTO', 3), ('GUIDED', 4), ('ZIGZAG', 24), ('FOLLOW', 23), ('ACRO', 1), ('SMART_RTL', 21), ('ALT_HOLD', 2), ('LOITER', 5), ('CIRCLE', 7), ('THROW', 18)])`
+
+分析原因可能是因为当前状态下无法更改为FLIP模式
+
+然后分析代码，发现代码更改模式只会更改为ACRO（<u>说明实际代码也不会更改为其他模式</u>），所以尝试将模式更改为ACRO（**但是这样就跟论文中给的例子不同了**）
+
+更改为ACRO之后，P3命题距离为1，模式设置成功，但是接着发送释放降落伞命令，降落伞并没有被成功释放，并且P5的距离为正，说明没有达到要求最小高度`CHUTE_ALT_MIN`
+
+![image-20221117170045597](md_image/image-20221117170045597.png)
+
+查看`CHUTE_ALT_MIN`，显示为10，但是P5的距离为正，说明当时高度应该不到10m，让无人机往上多飞一会
+
+![image-20221117171357855](md_image/image-20221117171357855.png)
+
+无人机高度足够，P5命题距离已经成负数，满足了无人机高度必须高于`CHUTE_ALT_MIN`的条件，但是发送释放降落伞命令，依然无效
+
+![image-20221117172235428](md_image/image-20221117172235428.png)
+
+**说明论文中给的例子复现并不理想，论文中说无人机只检测最后一个命题是否满足，但是最后一个命题满足的时候尝试释放降落伞依然无法释放**
+
+
+
+
+
 ## 疑问
 
 ### lat_avg and lon_avg (*1000) (/1000)
@@ -657,6 +740,8 @@ RC输入通道的默认映射，set_rc_channel_pwm函数rc_channels_override_sen
 9、自动模式
 
 此模式下飞行器会自动执行地面站Mission Planner设定好的任务，例如起飞、按顺序飞向多个航点、旋转、拍照等。
+
+
 
 ### Ardupilot Mavlink
 
