@@ -438,7 +438,7 @@ if drone_status == 4:
 
 ![image-20221117164530165](md_image/image-20221117164530165.png)
 
-ArduPilot文档明确规定了展开降落伞的条件：(1)马达必须是武装的，(2)飞行器不能处于FLIP或acroo飞行模式，(3)气压计必须显示飞行器没有在爬升，(4)飞行器当前高度必须高于CHUTE_ALT_MIN参数值。PGFUZZ在检查定义这些条件的A.CHUTE1策略(时检测到策略违规。
+ArduPilot文档明确规定了展开降落伞的条件：(1)马达必须是武装的，(2)飞行器不能处于FLIP或ACRO飞行模式，(3)气压计必须显示飞行器没有在爬升，(4)飞行器当前高度必须高于CHUTE_ALT_MIN参数值。PGFUZZ在检查定义这些条件的A.CHUTE1策略(时检测到策略违规。
 
 #### 复现思路
 
@@ -464,7 +464,7 @@ mode_id = master.mode_mapping()[mode]
 master.mav.set_mode_send(
     master.target_system,
     mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
-    rand_fligh_mode)
+    mode_id)
 ```
 
 打开降落伞命令
@@ -479,7 +479,7 @@ master.mav.command_long_send(
 
 
 
-#### 遇到的问题
+#### 复现过程
 
 在修改模式的时候，程序报错，并且发现命题距离不符合预取，命题P3表示当前模式为FLIP或者ACRO，但是距离为-1，表示当前模式不是FLIP或者ACRO
 
@@ -511,7 +511,28 @@ master.mav.command_long_send(
 
 
 
+排查错误发现，最开始的全局变量`Current_policy`设置不正确，造成set_precondition()函数没有正确地设置针对A.CHUTE的参数，所以导致降落伞无法打开
 
+```
+# Current_policy = "A.CHUTE"
+# Current_policy_P_length = 5
+Current_policy = "A.RTL1"
+Current_policy_P_length = 4
+```
+
+重新设置好`Current_policy`后继续复现漏洞，复现发现控制台中显示降落伞已经被释放，但是看程序获取的无人机参数，显示降落伞并没有被释放，并且点击处于DISARM状态（<u>这是不符合预期的，至少在发送降落伞命令之前应该是处于ARM状态的</u>），但是实际上控制台已经显示降落伞被释放且以16m/s的速度落地。
+
+<img src="md_image/image-20221120163330109.png" alt="image-20221120163330109" style="zoom: 25%;" />
+
+<img src="md_image/image-20221120163348739.png" alt="image-20221120163348739" style="zoom: 25%;" />
+
+
+
+再次查看控制台的无人机状态时间线（下面那两张图分别是ACRO和FLIP模式下的策略违反，<u>有一个小问题，可以看到</u><u>FLIP模式并没有被成功触发，后面被调回了ALT_HOLD模式</u>），~~分析原因可能是因为程序计算距离太慢，发送命令的速度太快，所以在计算距离的时候发送的命令已经生效，距离计算的是发送命令之后的状态~~。后面加了等待时间但是还是不行，并且发现P5的命题距离是符合预期的（一开始高度增加，然后释放降落伞后高度降低），并且程序后面一直卡住了，没有进入发送命令的主循环。调试程序查看`drone_status`，无人机状态为3（表示无人机状态为grounded，但是由于RV_alive变量为0所以导致没有进入主循环所以一直卡住），思考原因可能是因为参数接收的比较慢（<u>不知道具体原因，是无人机没有发送还是程序没有接收到？</u>）
+
+<img src="md_image/image-20221120164302219.png" alt="image-20221120164302219" style="zoom:33%;" />
+
+<img src="md_image/image-20221120164830534.png" alt="image-20221120164830534" style="zoom:33%;" />
 
 ## 疑问
 
