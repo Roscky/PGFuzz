@@ -534,6 +534,45 @@ Current_policy_P_length = 4
 
 <img src="md_image/image-20221120164830534.png" alt="image-20221120164830534" style="zoom:33%;" />
 
+
+
+
+
+后面在排查修改的过程中，发现fuzzing过程中有不正常的秒退（之前也遇到过，但是当时以为解决了所有没有记录），还有报错
+
+![image-20221124160827815](md_image/image-20221124160827815.png)
+
+后面排查原因是在这一段代码，将这一段代码删除则不会闪退（==但是不知道具体闪退原因，因为这一段代码在之前设置模式为GUIDED的时候是一模一样的==）
+
+    # Check ACK
+    ack = False
+    while not ack:
+        # Wait for ACK command
+        ack_msg = master.recv_match(type='COMMAND_ACK', blocking=True)
+        ack_msg = ack_msg.to_dict()
+        
+        # Check if command in the same in `set_mode`
+        if ack_msg['command'] != mavutil.mavlink.MAVLINK_MSG_ID_SET_MODE:
+            continue
+    
+        # Print the ACK result !
+        print(mavutil.mavlink.enums['MAV_RESULT'][ack_msg['result']].description)
+        break
+
+但是之后发现在发送了释放降落伞命令之后增加了一条time.sleep(3)命令程序也会闪退，不太清楚为什么会出现这种情况（后面发现是实验室电脑环境的问题）
+
+后面换到自己电脑的环境上跑又不会出问题，成功收到了降落伞释放的状态，P1的命题距离为1，表示降落伞被释放（<u>总结经验就是，不能再一个命令发出之后马上计算状态，这里等了三秒钟之后再计算状态是能够得到期望中的状态的</u>）。
+
+![img](md_image/5[5_1T(T3OOESE)]9[85}}H.png)
+
+（<u>后面尝试排查问题，对比自己电脑与实验室电脑的代码区别，结果发现把自己电脑上的代码直接复制到实验室电脑上，实验室电脑依然闪退，说明是环境的问题，但是两台电脑都是直接用的PGFUZZ给的虚拟机，~~可能有一点区别就是实验室电脑的输入法被我搞过一下，设置成了中文，其他的区别真的暂时想不到了~~，将实验室电脑系统设置为英文后依然闪退</u>。==在找到原因之前还是尽量用自己电脑进行实验或者两台电脑都试试，以免出现不必要的麻烦==）
+
+
+
+
+
+
+
 ## 疑问
 
 ### lat_avg and lon_avg (*1000) (/1000)
