@@ -390,7 +390,7 @@ if drone_status == 4:
 
 5. write_log()函数记录输入命令
 
-6. **休眠3秒钟**
+6. 休眠3秒钟
 
    ```
    write_log(print_param)
@@ -481,6 +481,8 @@ master.mav.command_long_send(
 
 #### 复现过程
 
+##### round1
+
 在修改模式的时候，程序报错，并且发现命题距离不符合预取，命题P3表示当前模式为FLIP或者ACRO，但是距离为-1，表示当前模式不是FLIP或者ACRO
 
 `Command is valid, but execution has failed. This is used to indicate any non-temporary or unexpected problem, i.e. any problem that must be fixed before the command can succeed/be retried. For example, attempting to write a file when out of memory, attempting to arm when sensors are not calibrated, etc.`
@@ -511,6 +513,8 @@ master.mav.command_long_send(
 
 
 
+##### round2
+
 排查错误发现，最开始的全局变量`Current_policy`设置不正确，造成set_precondition()函数没有正确地设置针对A.CHUTE的参数，所以导致降落伞无法打开
 
 ```
@@ -526,8 +530,6 @@ Current_policy_P_length = 4
 
 <img src="md_image/image-20221120163348739.png" alt="image-20221120163348739" style="zoom: 25%;" />
 
-
-
 再次查看控制台的无人机状态时间线（下面那两张图分别是ACRO和FLIP模式下的策略违反，<u>有一个小问题，可以看到</u><u>FLIP模式并没有被成功触发，后面被调回了ALT_HOLD模式</u>），~~分析原因可能是因为程序计算距离太慢，发送命令的速度太快，所以在计算距离的时候发送的命令已经生效，距离计算的是发送命令之后的状态~~。后面加了等待时间但是还是不行，并且发现P5的命题距离是符合预期的（一开始高度增加，然后释放降落伞后高度降低），并且程序后面一直卡住了，没有进入发送命令的主循环。调试程序查看`drone_status`，无人机状态为3（表示无人机状态为grounded，但是由于RV_alive变量为0所以导致没有进入主循环所以一直卡住），思考原因可能是因为参数接收的比较慢（<u>不知道具体原因，是无人机没有发送还是程序没有接收到？</u>）
 
 <img src="md_image/image-20221120164302219.png" alt="image-20221120164302219" style="zoom:33%;" />
@@ -536,13 +538,13 @@ Current_policy_P_length = 4
 
 
 
-
+##### round3
 
 后面在排查修改的过程中，发现fuzzing过程中有不正常的秒退（之前也遇到过，但是当时以为解决了所有没有记录），还有报错
 
 ![image-20221124160827815](md_image/image-20221124160827815.png)
 
-后面排查原因是在这一段代码，将这一段代码删除则不会闪退（==但是不知道具体闪退原因，因为这一段代码在之前设置模式为GUIDED的时候是一模一样的==）
+后面排查原因是在这一段代码，将这一段代码删除则不会闪退（==~~但是不知道具体闪退原因，因为这一段代码在之前设置模式为GUIDED的时候是一模一样的~~==后面发现是实验室电脑的环境问题，在自己电脑上就不会闪退）
 
     # Check ACK
     ack = False
@@ -566,6 +568,8 @@ Current_policy_P_length = 4
 ![img](md_image/5[5_1T(T3OOESE)]9[85}}H.png)
 
 （<u>后面尝试排查问题，对比自己电脑与实验室电脑的代码区别，结果发现把自己电脑上的代码直接复制到实验室电脑上，实验室电脑依然闪退，说明是环境的问题，但是两台电脑都是直接用的PGFUZZ给的虚拟机，~~可能有一点区别就是实验室电脑的输入法被我搞过一下，设置成了中文，其他的区别真的暂时想不到了~~，将实验室电脑系统设置为英文后依然闪退</u>。==在找到原因之前还是尽量用自己电脑进行实验或者两台电脑都试试，以免出现不必要的麻烦==）
+
+
 
 
 
